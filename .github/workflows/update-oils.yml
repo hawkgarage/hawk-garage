@@ -1,0 +1,34 @@
+name: Atualizar cadastro de oleos
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  update:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Atualizar index
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          s=s.replace('V0.5.1','V0.5.3').replace('V0.5.2','V0.5.3').replace('Versão 0.5.1','Versão 0.5.3')
+          s=s.replace('<th>Categoria</th><th>Fornecedor / custo</th>','<th>Categoria</th><th>Tipo</th><th>Fornecedor / custo</th>')
+          s=s.replace('</td><td>${(p.suppliers||[]).map(s=>esc(s.name)+\': \'+money(s.cost)).join(\'<br>\')||\'—\'}</td>', '</td><td>${p.oilType?esc(p.oilType):\'—\'}</td><td>${(p.suppliers||[]).map(s=>esc(s.name)+\': \'+money(s.cost)).join(\'<br>\')||\'—\'}</td>')
+          marker='render();</script>'
+          migration="""const oilTypes={'Motul 3000+ 20W50':'Mineral','Motul 5000+ 10W30':'Semi-sintético','Motul 5000+ 10W40':'Semi-sintético','Motul 5000+ 20W50':'Semi-sintético','Motul 5100 10W30':'Semi-sintético','Motul 5100 10W40':'Semi-sintético','Motul 5100 10W50':'Semi-sintético','Motul 5100 15W50':'Semi-sintético','Motul 7100 10W30':'Sintético','Motul 7100 5W40':'Sintético'};ps.forEach(p=>{let base=p.name.replace(/^Óleo /,'');if(p.cat==='Óleo'&&oilTypes[base]){p.name='Óleo '+base;p.oilType=oilTypes[base]}});localStorage.setItem(KEY,JSON.stringify(ps));
+          """
+          if 'const oilTypes=' not in s:
+              s=s.replace(marker,migration+marker)
+          p.write_text(s)
+          PY
+      - name: Commit atualização
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git diff --cached --quiet || (git commit -m 'Atualiza nomes e tipo dos oleos' && git push)
